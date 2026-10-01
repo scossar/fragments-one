@@ -4,40 +4,39 @@
     <meta charset="UTF-8" />
     <link rel="stylesheet" href="/src/styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri App</title>
+    <title>Fragments One</title>
     <script type="module" src="/src/main.ts" defer></script>
   </head>
-
   <body>
+    <header class="top-bar">
+      <button id="sidebar-toggle" type="button" aria-controls="notes-sidebar"
+        aria-expanded="true">Toggle</button>
+      <button id="new-note-button" type="button">New note</button>
+    </header>
+    <div class="workspace">
+      <aside id="notes-sidebar" aria-label="Saved notes">
+        <h2>Notes</h2>
+        <ul id="note-titles"></ul>
+        <p id="sidebar-status" role="status" aria-live="polite"></p>
+      </aside>
     <main class="container">
-      <h1>Welcome to Tauri</h1>
-
-      <div class="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/src/assets/vite.svg" class="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img
-            src="/src/assets/tauri.svg"
-            class="logo tauri"
-            alt="Tauri logo"
-          />
-        </a>
-        <a href="https://www.typescriptlang.org/docs" target="_blank">
-          <img
-            src="/src/assets/typescript.svg"
-            class="logo typescript"
-            alt="typescript logo"
-          />
-        </a>
-      </div>
-      <p>Click on the Tauri logo to learn more about the framework</p>
-
-      <form class="row" id="greet-form">
-        <input id="greet-input" placeholder="Enter a name..." />
-        <button type="submit">Greet</button>
+      <h1>New Note</h1>
+      <form id="note-form">
+        <label for="note-title">Title</label>
+        <input id="note-title" name="title" type="text" required minlength="2"
+          aria-describedby="title-help" />
+        <p class="help" id="title-help">At least 2 characters. Each title must be unique.</p>
+        <label for="note-body">Body</label>
+        <textarea id="note-body" name="body" rows="10" required minlength="5"
+          aria-describedby="body-help"></textarea>
+        <p class="help" id="body-help">At least 5 characters.</p>
+        <div class="form-actions">
+          <button id="save-button" type="submit">Save</button>
+          <button id="delete-button" type="button" hidden>Delete</button>
+        </div>
+        <p id="save-status" role="status" aria-live="polite" aria-atomic="true"></p>
       </form>
-      <p id="greet-msg"></p>
     </main>
+    </div>
   </body>
 </html>
