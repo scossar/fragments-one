@@ -16,6 +16,11 @@ Sidebar selections open in rendered Markdown view. The button at the form's
 top-right switches between View (rendered HTML) and Edit (CodeMirror Markdown).
 Switching modes preserves unsaved text; new notes start in Edit mode.
 Rendered HTML is sanitized with DOMPurify before display.
+Relative Markdown image paths resolve inside the application data directory's
+`assets` folder. For example, `![flexoki-paper](flexoki-paper.png)` loads
+`~/.local/share/com.scossar.fragments-one/assets/flexoki-paper.png` on Linux
+with the default data location. Tauri's asset protocol serves this folder only.
+Markdown stored in the database retains the relative image path.
 
 Titles must have at least 2 characters after trimming surrounding whitespace and
 must be unique (case-sensitive). Bodies must have at least 5 characters after

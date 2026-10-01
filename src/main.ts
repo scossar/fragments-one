@@ -5,6 +5,7 @@ import { EditorView } from "@codemirror/view";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import { resolvePreviewImages } from "./images";
 
 const form = document.querySelector<HTMLFormElement>("#note-form")!;
 const titleInput = document.querySelector<HTMLInputElement>("#note-title")!;
@@ -70,6 +71,7 @@ function setViewing(view: boolean) {
       marked.parse(bodyEditor.state.doc.toString(), { async: false }),
       { USE_PROFILES: { html: true }, FORBID_TAGS: ["form", "input", "button", "textarea", "select", "style"], FORBID_ATTR: ["style"] },
     );
+    resolvePreviewImages(preview);
   } else {
     preview.replaceChildren();
   }
