@@ -1,7 +1,7 @@
 # Fragments One
 
 A small Tauri experiment for saving plain-text notes. The form has a title input,
-a body textarea, and a Save button. A fixed-width (240px) sidebar lists all saved
+a CodeMirror body editor with Markdown syntax highlighting, and a Save button. A fixed-width (240px) sidebar lists all saved
 titles alphabetically, ignoring case, and refreshes after each successful save.
 Long titles wrap within the sidebar. The Toggle button at the far left of the top
 bar opens and closes the sidebar. Clicking a title loads the saved title and body
@@ -12,6 +12,10 @@ Delete appears beside Update while editing. Deleting removes the selected note,
 refreshes the sidebar, and returns the form to New note mode.
 The New note button beside Toggle clears the form, sets the heading to New Note,
 and returns to Save mode.
+Sidebar selections open in rendered Markdown view. The button at the form's
+top-right switches between View (rendered HTML) and Edit (CodeMirror Markdown).
+Switching modes preserves unsaved text; new notes start in Edit mode.
+Rendered HTML is sanitized with DOMPurify before display.
 
 Titles must have at least 2 characters after trimming surrounding whitespace and
 must be unique (case-sensitive). Bodies must have at least 5 characters after

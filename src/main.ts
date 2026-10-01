@@ -1,8 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
+import { minimalSetup } from "codemirror";
+import { Compartment, EditorState } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
 
 const form = document.querySelector<HTMLFormElement>("#note-form")!;
 const titleInput = document.querySelector<HTMLInputElement>("#note-title")!;
-const bodyInput = document.querySelector<HTMLTextAreaElement>("#note-body")!;
+const bodyContainer = document.querySelector<HTMLDivElement>("#note-body")!;
+const bodyError = document.querySelector<HTMLParagraphElement>("#body-error")!;
 const saveButton = document.querySelector<HTMLButtonElement>("#save-button")!;
 const deleteButton = document.querySelector<HTMLButtonElement>("#delete-button")!;
 const status = document.querySelector<HTMLParagraphElement>("#save-status")!;
@@ -12,6 +19,9 @@ const newNoteButton = document.querySelector<HTMLButtonElement>("#new-note-butto
 const noteTitles = document.querySelector<HTMLUListElement>("#note-titles")!;
 const sidebarStatus = document.querySelector<HTMLParagraphElement>("#sidebar-status")!;
 const heading = document.querySelector<HTMLHeadingElement>("h1")!;
+const viewEditToggle = document.querySelector<HTMLButtonElement>("#view-edit-toggle")!;
+const preview = document.querySelector<HTMLDivElement>("#note-preview")!;
+const bodyHelp = document.querySelector<HTMLParagraphElement>("#body-help")!;
 
 interface Note {
   id: number;
@@ -22,13 +32,92 @@ interface Note {
 let selectedNote: Note | null = null;
 let saving = false;
 let noteRequest = 0;
+let viewing = false;
+const bodyReadOnly = new Compartment();
+
+function bodyState(doc = "") {
+  return EditorState.create({
+    doc,
+    extensions: [
+      minimalSetup,
+      markdown({ base: markdownLanguage }),
+      EditorView.lineWrapping,
+      bodyReadOnly.of(EditorState.readOnly.of(saveButton.disabled)),
+      EditorView.contentAttributes.of({
+        id: "note-body-input",
+        role: "textbox",
+        "aria-labelledby": "body-label",
+        "aria-describedby": "body-help body-error",
+        "aria-multiline": "true",
+        "aria-required": "true",
+      }),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          status.textContent = "";
+          if (bodyError.textContent) validateBody();
+        }
+      }),
+    ],
+  });
+}
+
+const bodyEditor = new EditorView({ parent: bodyContainer, state: bodyState() });
+
+function setViewing(view: boolean) {
+  viewing = view;
+  if (view) {
+    preview.innerHTML = DOMPurify.sanitize(
+      marked.parse(bodyEditor.state.doc.toString(), { async: false }),
+      { USE_PROFILES: { html: true }, FORBID_TAGS: ["form", "input", "button", "textarea", "select", "style"], FORBID_ATTR: ["style"] },
+    );
+  } else {
+    preview.replaceChildren();
+  }
+  preview.hidden = !view;
+  bodyContainer.hidden = view;
+  bodyHelp.hidden = view;
+  bodyError.hidden = view || !bodyError.textContent;
+  titleInput.readOnly = view || saveButton.disabled;
+  saveButton.hidden = view;
+  viewEditToggle.textContent = view ? "Edit" : "View";
+  viewEditToggle.setAttribute("aria-pressed", String(view));
+  if (!view) bodyEditor.requestMeasure();
+}
+
+viewEditToggle.addEventListener("click", () => {
+  if (viewEditToggle.disabled) return;
+  setViewing(!viewing);
+  if (!viewing) bodyEditor.focus();
+});
+
+function setBody(value: string) {
+  // A new state keeps undo history from crossing between different notes.
+  bodyEditor.setState(bodyState(value));
+  clearBodyError();
+}
+
+function clearBodyError() {
+  bodyError.textContent = "";
+  bodyError.hidden = true;
+  bodyEditor.contentDOM.setAttribute("aria-invalid", "false");
+}
+
+function validateBody() {
+  const valid = Array.from(bodyEditor.state.doc.toString().trim()).length >= 5;
+  bodyError.textContent = valid ? "" :
+    "Enter a body with at least 5 characters, excluding surrounding whitespace.";
+  bodyError.hidden = valid;
+  bodyEditor.contentDOM.setAttribute("aria-invalid", String(!valid));
+  return valid;
+}
 
 function setFormBusy(busy: boolean) {
   saveButton.disabled = busy;
   deleteButton.disabled = busy;
+  viewEditToggle.disabled = busy;
   newNoteButton.disabled = saving && busy;
-  titleInput.readOnly = busy;
-  bodyInput.readOnly = busy;
+  titleInput.readOnly = busy || viewing;
+  bodyEditor.dispatch({ effects: bodyReadOnly.reconfigure(EditorState.readOnly.of(busy)) });
 }
 
 function markSelectedTitle() {
@@ -46,7 +135,8 @@ function resetToNewNote() {
   selectedNote = null;
   form.reset();
   titleInput.setCustomValidity("");
-  bodyInput.setCustomValidity("");
+  setBody("");
+  setViewing(false);
   heading.textContent = "New Note";
   saveButton.textContent = "Save";
   deleteButton.hidden = true;
@@ -73,7 +163,8 @@ async function loadNote(title: string) {
     if (request !== noteRequest) return;
     selectedNote = note;
     titleInput.value = note.title;
-    bodyInput.value = note.body;
+    setBody(note.body);
+    setViewing(true);
     heading.textContent = "Edit note";
     saveButton.textContent = "Update";
     deleteButton.hidden = false;
@@ -129,11 +220,6 @@ function validate() {
       ? "Enter a title with at least 2 characters, excluding surrounding whitespace."
       : "",
   );
-  bodyInput.setCustomValidity(
-    Array.from(bodyInput.value.trim()).length < 5
-      ? "Enter a body with at least 5 characters, excluding surrounding whitespace."
-      : "",
-  );
 }
 
 form.addEventListener("input", () => {
@@ -168,6 +254,11 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
   validate();
   if (saveButton.disabled || !form.reportValidity()) return;
+  if (!validateBody()) {
+    setViewing(false);
+    bodyEditor.focus();
+    return;
+  }
 
   saving = true;
   setFormBusy(true);
@@ -177,7 +268,7 @@ form.addEventListener("submit", async (event) => {
   try {
     const values = {
       title: titleInput.value.trim(),
-      body: bodyInput.value,
+      body: bodyEditor.state.doc.toString(),
     };
     if (selectedNote) {
       await invoke("update_note", { id: selectedNote.id, ...values });
@@ -187,6 +278,7 @@ form.addEventListener("submit", async (event) => {
     } else {
       await invoke("save_note", values);
       form.reset();
+      setBody("");
       status.textContent = "Note saved.";
     }
     status.dataset.state = "success";

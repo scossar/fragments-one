@@ -22,14 +22,20 @@
     <main class="container">
       <h1>New Note</h1>
       <form id="note-form">
+        <div class="form-toolbar">
+          <button id="view-edit-toggle" type="button" aria-controls="note-body note-preview"
+            aria-pressed="false">View</button>
+        </div>
         <label for="note-title">Title</label>
         <input id="note-title" name="title" type="text" required minlength="2"
           aria-describedby="title-help" />
         <p class="help" id="title-help">At least 2 characters. Each title must be unique.</p>
-        <label for="note-body">Body</label>
-        <textarea id="note-body" name="body" rows="10" required minlength="5"
-          aria-describedby="body-help"></textarea>
-        <p class="help" id="body-help">At least 5 characters.</p>
+        <label id="body-label" for="note-body-input">Body</label>
+        <div id="note-body"></div>
+        <div id="note-preview" class="markdown-preview" role="region"
+          aria-label="Rendered note body" tabindex="0" hidden></div>
+        <p class="help" id="body-help">Markdown supported. At least 5 characters.</p>
+        <p id="body-error" role="alert" hidden></p>
         <div class="form-actions">
           <button id="save-button" type="submit">Save</button>
           <button id="delete-button" type="button" hidden>Delete</button>
